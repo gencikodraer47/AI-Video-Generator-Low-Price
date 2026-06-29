@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 图片生成器 - GPT Image 2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .container {
+    max-width: 920px;
+    width: 100%;
+    padding: 30px 20px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 30px;
+  }
+  .card {
+    background: #1a1a2e;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid #2a2a4a;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    color: #a0a0c0;
+  }
+  textarea {
+    width: 100%;
+    min-height: 100px;
+    background: #12122a;
+    border: 1px solid #3a3a5a;
+    border-radius: 10px;
+    padding: 14px;
+    color: #e0e0e0;
+    font-size: 15px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: #667eea; }
+  textarea::placeholder { color: #555; }
+  .params {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+  .param-group label {
+    display: block;
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 6px;
+  }
+  select, input[type="number"] {
+    width: 100%;
+    background: #12122a;
+    border: 1px solid #3a3a5a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #e0e0e0;
+    font-size: 14px;
+    outline: none;
+  }
+  select:focus, input[type="number"]:focus { border-color: #667eea; }
+  .notice {
+    background: #2a2a1a;
+    border: 1px solid #4a4a2a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: #cccc66;
+    line-height: 1.6;
+  }
+  .notice strong { color: #eeee88; }
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: #2a2a4a;
+    color: #ccc;
+  }
+  .btn-secondary:hover { background: #3a3a5a; }
+  .status {
+    text-align: center;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-size: 14px;
+    display: none;
+  }
+  .status.loading {
+    display: block;
+    background: #1a1a3e;
+    color: #8888cc;
+    border: 1px solid #2a2a5a;
+  }
+  .status.error {
+    display: block;
+    background: #2a1a1a;
+    color: #cc6666;
+    border: 1px solid #4a2a2a;
+  }
+  .status.success {
+    display: block;
+    background: #1a2a1a;
+    color: #66cc66;
+    border: 1px solid #2a4a2a;
+  }
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #8888cc;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .result-area {
+    margin-top: 20px;
+    text-align: center;
+    display: none;
+  }
+  .result-area img {
+    max-width: 100%;
+    border-radius: 12px;
+    border: 1px solid #3a3a5a;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .result-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+  .btn-small {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    background: #2a2a4a;
+    color: #ccc;
+    transition: all 0.2s;
+  }
+  .btn-small:hover { background: #3a3a5a; }
+  .config-section summary {
+    cursor: pointer;
+    color: #667eea;
+    font-size: 13px;
+    margin-top: 16px;
+    user-select: none;
+  }
+  .config-section .config-content {
+    margin-top: 12px;
+    display: none;
+  }
+  .config-section[open] .config-content { display: block; }
+  .config-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .config-row label {
+    font-size: 13px;
+    color: #888;
+    min-width: 80px;
+    line-height: 36px;
+  }
+  .config-row input, .config-row select {
+    flex: 1;
+    background: #12122a;
+    border: 1px solid #3a3a5a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #e0e0e0;
+    font-size: 13px;
+    outline: none;
+  }
+  .config-row input:focus, .config-row select:focus { border-color: #667eea; }
+  .history {
+    margin-top: 24px;
+  }
+  .history-item {
+    display: inline-block;
+    margin: 6px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .history-item:hover { transform: scale(1.05); }
+  .history-item img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #3a3a5a;
+  }
+  .time-info {
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    margin-top: 8px;
+  }
+  .model-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .tag-1k { background: #2a3a2a; color: #88cc88; }
+  .tag-2k { background: #2a2a3a; color: #8888cc; }
+  .tag-4k { background: #3a2a3a; color: #cc88cc; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>AI 图片生成器</h1>
+  <p class="subtitle">GPT Image 2 系列 · 支持 1K-4K · 在线生图</p>
+
+  <div class="card">
+    <div class="card-title">描述你想要的图片</div>
+    <textarea id="prompt" placeholder="例如：一只橘猫坐在窗台上，夕阳余晖，电影级光影"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-title">生成参数</div>
+    <div class="params">
+      <div class="param-group">
+        <label>模型选择</label>
+        <select id="model" onchange="onModelChange()">
+          <option value="gpt-image-2-4k" selected>gpt-image-2-4k (4K)</option>
+          <option value="gpt-image-2-cc">gpt-image-2-cc</option>
+          <option value="gemini-3-pro-image-preview">gemini-3-pro-image-preview</option>
+          <option value="gemini-3.1-flash-image-preview">gemini-3.1-flash-image-preview</option>
+        </select>
+      </div>
+      <div class="param-group">
+        <label>图片尺寸</label>
+        <select id="size">
+          <!-- 动态填充 -->
+        </select>
+      </div>
+      <div class="param-group">
+        <label>图片质量</label>
+        <select id="quality">
+          <option value="low">low</option>
+          <option value="medium">medium</option>
+          <option value="high" selected>high</option>
+        </select>
+      </div>
+    </div>
+    <div class="params" style="margin-top:14px;">
+      <div class="param-group">
+        <label>生成数量</label>
+        <select id="numImages">
+          <option value="1" selected>1 张</option>
+          <option value="2">2 张</option>
+          <option value="3">3 张</option>
+          <option value="4">4 张</option>
+        </select>
+      </div>
+      <div class="param-group">
+        <label>分组令牌</label>
+        <select id="groupToken">
+          <option value="default">默认分组 (1-2K)</option>
+          <option value="SVIP" selected>SVIP 分组 (4K)</option>
+        </select>
+      </div>
+      <div class="param-group">
+        <label>响应格式</label>
+        <select id="responseFormat">
+          <option value="b64_json" selected>Base64 (本地直显)</option>
+          <option value="url">URL (临时链接)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="notice">
+      <strong>模型能力说明：</strong><br>
+      • <strong>gpt-image-2-4k</strong>：自定义4K模型，需选 <strong>SVIP 分组</strong>，直接出4K<br>
+      • <strong>gpt-image-2 / pro</strong>：仅支持 1K-2K，<strong>禁止4K会报错</strong>（低端-中端质量）<br>
+      • <strong>gpt-image-2-max</strong>：上游原始模型，支持 1K-4K，需选 <strong>SVIP 分组</strong> 才能出4K<br>
+      • 参考图不能超过16张
+    </div>
+
+    <details class="config-section">
+      <summary>高级配置（接口地址 / 密钥）</summary>
+      <div class="config-content">
+        <div class="config-row">
+          <label>接口地址</label>
+          <input type="text" id="apiBase" value="https://www.aiwts.com">
+        </div>
+        <div class="config-row">
+          <label>API 密钥</label>
+          <input type="password" id="apiKey" value="sk-UJOt0o8TOIN72yvVtIFW8SBCp7zBG56KAWPsJriNOC3EqJaG">
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="generateBtn" onclick="generate()">生成图片</button>
+    <button class="btn btn-secondary" onclick="clearAll()">清空</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="result-area" id="resultArea">
+    <div id="imageContainer"></div>
+    <div class="result-actions" id="resultActions"></div>
+    <div class="time-info" id="timeInfo"></div>
+  </div>
+
+  <div class="history" id="historySection" style="display:none;">
+    <div class="card">
+      <div class="card-title">历史记录</div>
+      <div id="historyGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 模型与尺寸映射
+const modelSizes = {
+  'gpt-image-2-4k': [
+    { value: '1024x1024', label: '1024 × 1024 (1K)' },
+    { value: '1024x1792', label: '1024 × 1792 (竖版)' },
+    { value: '1792x1024', label: '1792 × 1024 (横版)' },
+    { value: '2048x2048', label: '2048 × 2048 (2K)' },
+    { value: '2048x3840', label: '2048 × 3840 (4K 竖版)' },
+    { value: '3840x2048', label: '3840 × 2048 (4K 横版)' }
+  ],
+  'gpt-image-2-cc': [
+    { value: '1024x1024', label: '1024 × 1024 (1K)' },
+    { value: '1024x1792', label: '1024 × 1792 (竖版)' },
+    { value: '1792x1024', label: '1792 × 1024 (横版)' },
+    { value: '2048x2048', label: '2048 × 2048 (2K)' },
+    { value: '2048x3840', label: '2048 × 3840 (4K 竖版)' },
+    { value: '3840x2048', label: '3840 × 2048 (4K 横版)' }
+  ],
+  'gemini-3-pro-image-preview': [
+    { value: '1024x1024', label: '1024 × 1024 (1K)' },
+    { value: '1024x1792', label: '1024 × 1792 (竖版)' },
+    { value: '1792x1024', label: '1792 × 1024 (横版)' }
+  ],
+  'gemini-3.1-flash-image-preview': [
+    { value: '1024x1024', label: '1024 × 1024 (1K)' },
+    { value: '1024x1792', label: '1024 × 1792 (竖版)' },
+    { value: '1792x1024', label: '1792 × 1024 (横版)' }
+  ]
+};
+
+let history = [];
+let startTime = 0;
+
+function onModelChange() {
+  const model = document.getElementById('model').value;
+  const sizeSelect = document.getElementById('size');
+  const groupSelect = document.getElementById('groupToken');
+
+  // 更新尺寸选项
+  sizeSelect.innerHTML = '';
+  const sizes = modelSizes[model] || modelSizes['gpt-image-2-max'];
+  sizes.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.value;
+    opt.textContent = s.label;
+    sizeSelect.appendChild(opt);
+  });
+  // 默认选最后一个（最大尺寸）
+  if (sizes.length > 0) {
+    sizeSelect.value = sizes[sizes.length - 1].value;
+  }
+
+  // 更新分组令牌选项
+  if (model === 'gpt-image-2-4k' || model === 'gpt-image-2-cc') {
+    // 这两个模型只存在于SVIP分组，强制锁定
+    groupSelect.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = 'SVIP';
+    opt.textContent = 'SVIP 分组 (仅此分组可用)';
+    opt.selected = true;
+    groupSelect.appendChild(opt);
+  } else {
+    groupSelect.innerHTML = '';
+    const opt1 = document.createElement('option');
+    opt1.value = 'default';
+    opt1.textContent = '默认分组 (1-2K)';
+    opt1.selected = true;
+    groupSelect.appendChild(opt1);
+  }
+}
+
+async function generate() {
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) {
+    showStatus('请输入图片描述', 'error');
+    return;
+  }
+
+  const apiBase = document.getElementById('apiBase').value.trim().replace(/\/+$/, '');
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const model = document.getElementById('model').value;
+  const size = document.getElementById('size').value;
+  const quality = document.getElementById('quality').value;
+  const n = parseInt(document.getElementById('numImages').value);
+  const responseFormat = document.getElementById('responseFormat').value;
+  const groupToken = document.getElementById('groupToken').value;
+
+  if (!apiKey) {
+    showStatus('请填写 API 密钥', 'error');
+    return;
+  }
+
+  // 4K 校验
+  const is4K = size.includes('3840');
+  if (is4K && model !== 'gpt-image-2-4k' && model !== 'gpt-image-2-cc') {
+    showStatus('4K 尺寸仅 gpt-image-2-4k / gpt-image-2-cc 模型支持！', 'error');
+    return;
+  }
+  if (is4K && groupToken !== 'SVIP') {
+    showStatus('4K 尺寸需要选择 SVIP 分组令牌！', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  document.getElementById('resultArea').style.display = 'none';
+  startTime = Date.now();
+
+  showStatus('正在生成中，4K 图片可能需要较长时间，请耐心等待...', 'loading');
+
+  try {
+    const body = {
+      model: model,
+      prompt: prompt,
+      n: n,
+      size: size,
+      quality: quality,
+      response_format: responseFormat
+    };
+
+    // 如果选了SVIP分组，添加分组参数
+    if (groupToken && groupToken !== 'default') {
+      body.group = groupToken;
+    }
+
+    const response = await fetch(apiBase + '/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify(body)
+    });
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    if (!response.ok) {
+      let errMsg = 'HTTP ' + response.status;
+      try {
+        const errData = await response.json();
+        errMsg = errData.error?.message || errData.message || JSON.stringify(errData);
+      } catch(e) {
+        try { errMsg = await response.text(); } catch(e2) {}
+      }
+      throw new Error(errMsg);
+    }
+
+    const data = await response.json();
+
+    if (!data.data || data.data.length === 0) {
+      throw new Error('接口未返回图片数据');
+    }
+
+    showStatus('生成成功！耗时 ' + elapsed + ' 秒', 'success');
+
+    const container = document.getElementById('imageContainer');
+    const actions = document.getElementById('resultActions');
+    container.innerHTML = '';
+    actions.innerHTML = '';
+
+    data.data.forEach((item, index) => {
+      let imgSrc;
+      if (item.b64_json) {
+        imgSrc = 'data:image/png;base64,' + item.b64_json;
+      } else if (item.url) {
+        imgSrc = item.url;
+      } else {
+        return;
+      }
+
+      const img = document.createElement('img');
+      img.src = imgSrc;
+      img.style.marginBottom = '16px';
+      img.alt = prompt;
+      container.appendChild(img);
+
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'btn-small';
+      dlBtn.textContent = '下载第 ' + (index + 1) + ' 张';
+      dlBtn.onclick = function() { downloadImage(imgSrc, 'ai-' + model + '-' + Date.now() + '-' + (index+1) + '.png'); };
+      actions.appendChild(dlBtn);
+
+      history.unshift({ src: imgSrc, prompt: prompt, time: new Date().toLocaleString() });
+    });
+
+    document.getElementById('timeInfo').textContent = '模型: ' + model + ' | 尺寸: ' + size + ' | 质量: ' + quality + ' | 分组: ' + groupToken + ' | 耗时: ' + elapsed + 's';
+    document.getElementById('resultArea').style.display = 'block';
+
+    updateHistory();
+
+  } catch (err) {
+    showStatus('生成失败: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + type;
+  el.innerHTML = type === 'loading' ? '<span class="spinner"></span>' + msg : msg;
+}
+
+function downloadImage(src, filename) {
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function clearAll() {
+  document.getElementById('prompt').value = '';
+  document.getElementById('resultArea').style.display = 'none';
+  document.getElementById('status').className = 'status';
+  document.getElementById('status').style.display = 'none';
+}
+
+function updateHistory() {
+  if (history.length === 0) return;
+  document.getElementById('historySection').style.display = 'block';
+  const grid = document.getElementById('historyGrid');
+  grid.innerHTML = '';
+  history.slice(0, 20).forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.title = item.prompt + '\n' + item.time;
+    const img = document.createElement('img');
+    img.src = item.src;
+    img.alt = item.prompt;
+    div.appendChild(img);
+    div.onclick = function() {
+      const container = document.getElementById('imageContainer');
+      const actions = document.getElementById('resultActions');
+      container.innerHTML = '';
+      actions.innerHTML = '';
+      const bigImg = document.createElement('img');
+      bigImg.src = item.src;
+      container.appendChild(bigImg);
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'btn-small';
+      dlBtn.textContent = '下载图片';
+      dlBtn.onclick = function() { downloadImage(item.src, 'ai-' + Date.now() + '.png'); };
+      actions.appendChild(dlBtn);
+      document.getElementById('resultArea').style.display = 'block';
+    };
+    grid.appendChild(div);
+  });
+}
+
+// 初始化尺寸选项
+onModelChange();
+
+// 回车快捷生成
+document.getElementById('prompt').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    generate();
+  }
+});
+</script>
+</body>
+</html>
